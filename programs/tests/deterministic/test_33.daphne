@@ -1,0 +1,5 @@
+( defn fn [x y]
+(+ (* 2 x) y) )
+( defn gn [x]
+(/ (+ x 1) 2))
+(gn (fn 9 3))

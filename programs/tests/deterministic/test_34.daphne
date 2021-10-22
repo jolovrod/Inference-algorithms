@@ -1,0 +1,6 @@
+( defn fn [x y]
+    (+ (* 2 x) y) )
+(fn (let [x ( list 1 2 3)]
+( append x 4)) (list 4 3 2 1))
+( defn gn [x]
+    (/ (+ x 1) 2))

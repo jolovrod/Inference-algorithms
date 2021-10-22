@@ -129,26 +129,24 @@ def run_probabilistic_tests():
         
 if __name__ == '__main__':
     
-    print("deterministic tests \n")
-    run_deterministic_tests()
-    print("\n\n\n")
-    print("probabilistic tests \n")
-    run_probabilistic_tests()
-    print("\n\n\n")
+    # print("deterministic tests \n")
+    # run_deterministic_tests()
+    # print("\n\n\n")
+    # print("probabilistic tests \n")
+    # run_probabilistic_tests()
+    # print("\n\n\n")
 
     n = 1000
 
     for i in range(1,5):
-        print("programs", i, "\n")
         graph = daphne(['graph','-i','C:/Users/jlovr/CS532-HW2/programs/{}.daphne'.format(i)])
         
-        samples = []
-        for _ in range(n):
-            samples.append(sample_from_joint(graph))
-        
-        sampler(i, samples, "_graph.pdf")
+        # samples = []
+        # for _ in range(n):
+        #     samples.append(sample_from_joint(graph))
+        # sampler(i, samples, "_graph.pdf")
 
-        # print('\n\n\nSample of prior of program {}:'.format(i))
-        # print(sample_from_joint(graph))    
+        print('\n\n\nSample of prior of program {}:'.format(i))
+        print(sample_from_joint(graph))    
 
     

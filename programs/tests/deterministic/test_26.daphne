@@ -1,0 +1,5 @@
+(let [x ( vector 1 2 3 4)
+y ( last x )
+z ( list ( first x))
+a ( append z y)]
+(+ ( first a) ( first ( rest a))))

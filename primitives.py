@@ -17,7 +17,11 @@ class Env(dict):
         self.outer = outer
     def find(self, var):
         "Find the innermost Env where var appears."
-        return self if (var in self) else self.outer.find(var)
+        try: 
+            return self if (var in self) else self.outer.find(var)
+        except: 
+            print("except", var)
+            raise
 
 class Normal(object):
     def __init__(self, *x):
@@ -26,6 +30,9 @@ class Normal(object):
     def sample(self):
         return self.dist.sample()
 
+    def log_prob(self, c):
+        return self.dist.log_prob(c)
+
 class Beta(object):
     def __init__(self, *x):
         self.dist = torch.distributions.Beta(*torch.FloatTensor([*x]))
@@ -33,12 +40,42 @@ class Beta(object):
     def sample(self):
         return self.dist.sample()
 
-class Bernoulli(object):
+    def log_prob(self, c):
+        return self.dist.log_prob(c)
+
+class Gamma(object):
     def __init__(self, *x):
-        self.dist = torch.distributions.Bernoulli(*torch.FloatTensor([*x]))
+        self.dist = torch.distributions.Gamma(*torch.FloatTensor([*x]))
 
     def sample(self):
         return self.dist.sample()
+
+    def log_prob(self, c):
+        return self.dist.log_prob(c)
+
+class Dirac(object):
+    def __init__(self, x):
+        self.value = x
+
+    def sample(self):
+        return self.value
+
+    def log_prob(self, c):
+        return c==self.value
+
+class Bernoulli(object):
+    def __init__(self, x):
+        self.dist = torch.distributions.Bernoulli(x)
+        self.p = x
+
+    def sample(self):
+        return self.dist.sample()
+
+    def log_prob(self, c):
+        if c:
+            return torch.log(self.p)
+        else:
+            return torch.log(1 - self.p)
 
 class Exponential(object):
     def __init__(self, *x):
@@ -47,6 +84,9 @@ class Exponential(object):
     def sample(self):
         return self.dist.sample()
 
+    def log_prob(self, c):
+        return self.dist.log_prob(c)
+
 class Uniform(object):
     def __init__(self, *x):
         self.dist = torch.distributions.Uniform(*torch.FloatTensor([*x]))
@@ -54,12 +94,28 @@ class Uniform(object):
     def sample(self):
         return self.dist.sample()
 
+    def log_prob(self, c):
+        return self.dist.log_prob(c)
+
+class Dirichlet(object):
+    def __init__(self, x):
+        self.dist = torch.distributions.Dirichlet(x)
+
+    def sample(self):
+        return self.dist.sample()
+
+    def log_prob(self, c):
+        return self.dist.log_prob(c)
+
 class Discrete(object):
     def __init__(self, x):
         self.dist = torch.distributions.Categorical(probs = torch.FloatTensor(x))
 
     def sample(self):
         return self.dist.sample()
+
+    def log_prob(self, c):
+        return self.dist.log_prob(c)
         
 def get(x,i):
     if type(x)==dict:
@@ -134,6 +190,9 @@ def standard_env() -> Env:
         'min':     min,
         'not':     op.not_,
         'empty?':   lambda x: x == [], 
+        '=':        lambda x, y: x==y,
+        'and':     lambda x, y: x and y,
+        'or':     lambda x, y: x or y,
         'number?': lambda x: isinstance(x, Number),  
 		'print':   print,
         'procedure?': callable,
@@ -154,6 +213,10 @@ def standard_env() -> Env:
         'exponential': lambda *x: Exponential(*x),
         'uniform': lambda *x: Uniform(*x),
         'discrete': lambda *x: Discrete(*x),
+        'dirichlet': lambda *x: Dirichlet(*x),
+        'flip': lambda *x: Bernoulli(*x),
+        'gamma': lambda *x: Gamma(*x),
+        'dirac': lambda *x: Dirac(*x),
         'mat-transpose': lambda x: x.T,
         'mat-tanh': lambda x: x.tanh(),
         'mat-mul': lambda x,y: torch.matmul(x.float(),y.float()),

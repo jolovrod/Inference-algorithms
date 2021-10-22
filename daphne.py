@@ -1,7 +1,7 @@
 import json
 import subprocess
 
-def daphne(args, cwd='/Users/jlovr/CS532-HW2/daphne'):
+def daphne(args, cwd='C:/Users/jlovr/OneDrive/Documents/GitHub/Inference-algorithms/daphne'):
     proc = subprocess.run(['lein','run','-f','json'] + args,
                           capture_output=True, cwd=cwd, shell=True)
     if(proc.returncode != 0):
