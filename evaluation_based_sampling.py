@@ -2,7 +2,7 @@ from daphne import daphne
 from tests import is_tol, run_prob_test,load_truth
 from primitives import standard_env, Symbol, Env
 import torch
-from sampler import sampler
+from plots import plots
 import numpy as np
 
 def evaluate_program(ast, sigma = {}):
@@ -60,43 +60,12 @@ def eval(x, sigma, env=standard_env()):
         # TODO: is this the real sigma we want? Idk. 
         #   maybe we should ignore instead of store. Not sure. 
         vals = [x[0] for x in (eval(arg, sigma, env) for arg in args)]
-        if type(proc)==Procedure:
+        if type(proc)==Procedure:   # user defined
             r, _ = proc(*vals)
-        else:
+        else:                       # primitive
             r = proc(*vals)
         # print("done", op, args, r)
         return r, sigma
-
-
-def likelihood_weighting(ast, L):
-    samples = []
-    logW = []
-    for _ in range(L):
-        sigma = {'logW': 0}
-        samples_l, sigma = evaluate_program(ast, sigma)
-        logW_l = sigma['logW']
-        samples.append(samples_l)
-        logW.append(logW_l)     
-    return samples, logW
-
-def weighted_avg(X, weights):
-    return (weights.dot(X)) / weights.sum()
-
-def IS(ast, L, *args):
-    samples, logW = likelihood_weighting(ast,L)
-    W = np.exp(logW)
-    try:
-        for n in range(L):
-            samples[n] = [float(x) for x in samples[n]]
-        variables = np.array(samples,dtype=float)
-        avg = weighted_avg(variables, W)
-        var = weighted_avg((variables - avg)**2, W)
-        return avg, var
-    except:
-        avg = weighted_avg(samples, W)
-        var = weighted_avg((samples - avg)**2, W)        
-        return avg, var
-
 
 def get_stream(ast):
     """Return a stream of prior samples"""
@@ -107,8 +76,8 @@ def run_deterministic_tests():
     
     for i in range(1,14):
         #note: this path should be with respect to the daphne path!
-        ast = daphne(['desugar', '-i', '../Inference-algorithms/programs/tests/deterministic/test_{}.daphne'.format(i)])
-        truth = load_truth('programs/tests/deterministic/test_{}.truth'.format(i))
+        ast = daphne(['desugar', '-i', 'C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/tests/deterministic/test_{}.daphne'.format(i)])
+        truth = load_truth('C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/tests/deterministic/test_{}.truth'.format(i))
         ret, sig = evaluate_program(ast)
         try:
             assert(is_tol(ret, truth))
@@ -127,8 +96,8 @@ def run_probabilistic_tests():
     
     for i in range(1,7):
         #note: this path should be with respect to the daphne path!        
-        ast = daphne(['desugar', '-i', '../Inference-algorithms/programs/tests/probabilistic/test_{}.daphne'.format(i)])
-        truth = load_truth('programs/tests/probabilistic/test_{}.truth'.format(i))
+        ast = daphne(['desugar', '-i', 'C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/tests/probabilistic/test_{}.daphne'.format(i)])
+        truth = load_truth('C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/tests/probabilistic/test_{}.truth'.format(i))
         
         stream = get_stream(ast)
         
@@ -150,25 +119,16 @@ if __name__ == '__main__':
     # run_probabilistic_tests()
     # print("\n\n\n")
 
-    n = 1000
-
     for i in range(1,6):
-        ast = daphne(['desugar', '-i', 'C:/Users/jlovr/OneDrive/Documents/GitHub/Inference-algorithms/programs/{}.daphne'.format(i)])
+        ast = daphne(['desugar', '-i', 'C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/{}.daphne'.format(i)])
 
         # samples = []
         # for _ in range(n):
         #     samples.append(evaluate_program(ast)[0])
-        # sampler(i, samples, "_standard.pdf")
+        # plots(i, samples, "_standard.pdf")
 
-        # print('\n\n\nSample of prior of program {}:'.format(i))
-        # print(evaluate_program(ast)[0], "\n\n\n")  
-
-        print("program", i)
-        avg, var = IS(ast, 10000)
-        print("average", avg)
-        print("variance", var)
-
-        print("\n\n\n")
+        print('\n\n\nSample of prior of program {}:'.format(i))
+        print(evaluate_program(ast)[0], "\n\n\n")  
 
 
 

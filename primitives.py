@@ -26,6 +26,10 @@ class Env(dict):
 class Normal(object):
     def __init__(self, *x):
         self.dist = torch.distributions.Normal(*torch.FloatTensor([*x]))
+        self.params = x
+    
+    def __str__(self):
+        return str([*self.params])
 
     def sample(self):
         return self.dist.sample()
@@ -61,7 +65,10 @@ class Dirac(object):
         return self.value
 
     def log_prob(self, c):
-        return c==self.value
+        if c==self.value:
+            return torch.tensor(1)
+        else:
+            return torch.tensor(0)
 
 class Bernoulli(object):
     def __init__(self, x):

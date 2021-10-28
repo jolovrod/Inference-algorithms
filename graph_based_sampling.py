@@ -3,7 +3,11 @@ from daphne import daphne
 
 from primitives import standard_env 
 from tests import is_tol, run_prob_test_graph,load_truth
-from sampler import sampler
+from plots import plots
+import numpy as np
+from statistics import mean, variance
+from torch.distributions import MultivariateNormal
+
 
 # Put all function mappings from the deterministic language environment to your
 # Python evaluation context here:
@@ -46,21 +50,54 @@ def deterministic_eval(exp):
     else: 
         return exp
 
-def graph_eval(exp, values):
+def sub_in_vals(exp, values):
     if type(exp) == list:
-        return [graph_eval(x, values) for x in exp]
+        return [sub_in_vals(x, values) for x in exp]
     try:
         return values[exp] 
     except:
         return exp
 
+def sub_in_vals_xy(exp, x_values, y_values):
+    if type(exp) == list:
+        return [sub_in_vals_xy(x, x_values, y_values) for x in exp]
+    if exp in x_values:
+        return x_values[exp] 
+    elif exp in y_values:
+        return y_values[exp]
+    else:
+        return exp
 
-def sample_from_joint(graph):
+def sample_from_joint(graph, evaluate_return = True):
     "This function does ancestral sampling starting from the prior."
     values = {}
     # "V" contains all random variable vertices, 
     # "A" contains the forward pointing adjacency information, 
     # "P" contains the symbolic expressions of the link functions
+    # "Y" contains the values of the observed variables
+    V, A, P, Y = graph[1]['V'], graph[1]['A'], graph[1]['P'], graph[1]['Y']
+    
+    V_sorted = topological(V, A)
+
+    for v in V_sorted:
+        op, exp = P[v][0], P[v][1]
+        if op == "sample*":
+            link = sub_in_vals(exp, values)
+            values[v] = deterministic_eval(link).sample()
+        elif op == "observe*":
+            # TODO this might not be quite right. Might need to call evaluate. 
+            values[v] = torch.tensor(Y[v])
+
+    if evaluate_return:
+        # The last entry in the graph is the return value of the program.
+        return deterministic_eval(sub_in_vals(graph[-1], values))
+    else:
+        return values
+
+def init_X_vals(graph):
+    "This function does ancestral sampling starting from the prior."
+    values = {}
+
     V, A, P = graph[1]['V'], graph[1]['A'], graph[1]['P']
     
     V_sorted = topological(V, A)
@@ -68,12 +105,36 @@ def sample_from_joint(graph):
     for v in V_sorted:
         op, exp = P[v][0], P[v][1]
         if op == "sample*":
-            link = graph_eval(exp, values)
-            values[v] = deterministic_eval(link).sample()
-        # ignore op == "observe*"
+            link = sub_in_vals(exp, values)
+            values[v] = deterministic_eval(link).sample().type(torch.float)
 
-    # The last entry in the graph is the return value of the program.
-    return deterministic_eval(graph_eval(graph[-1], values))
+    return values
+
+
+def init_XY_vals(graph, requires_grad = False):
+    "This function does ancestral sampling starting from the prior."
+    valuesX = {}
+    valuesY = {}
+
+    V, A, P, Y = graph[1]['V'], graph[1]['A'], graph[1]['P'], graph[1]['Y']
+    
+    V_sorted = topological(V, A)
+
+    for v in V_sorted:
+        op, exp = P[v][0], P[v][1]
+        if op == "sample*":
+            link = sub_in_vals(exp, valuesX)
+            valuesX[v] = deterministic_eval(link).sample().type(torch.float)
+            # require grad for hmc
+            if requires_grad:
+                valuesX[v].requires_grad = True
+        elif op == "observe*":
+            valuesY[v] = torch.tensor(Y[v]).type(torch.float)
+            # require grad for hmc
+            if requires_grad:
+                valuesY[v].requires_grad = True            
+
+    return valuesX, valuesY
 
 
 def get_stream(graph):
@@ -91,8 +152,8 @@ def run_deterministic_tests():
     
     for i in range(1,14):
         #note: this path should be with respect to the daphne path!
-        graph = daphne(['graph','-i','C:/Users/jlovr/CS532-HW2/programs/tests/deterministic/test_{}.daphne'.format(i)])
-        truth = load_truth('programs/tests/deterministic/test_{}.truth'.format(i))
+        graph = daphne(['graph','-i','C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/tests/deterministic/test_{}.daphne'.format(i)])
+        truth = load_truth('C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/tests/deterministic/test_{}.truth'.format(i))
         ret = deterministic_eval(graph[-1])
         try:
             assert(is_tol(ret, truth))
@@ -112,8 +173,8 @@ def run_probabilistic_tests():
     
     for i in range(1,7):
         #note: this path should be with respect to the daphne path!        
-        graph = daphne(['graph', '-i', 'C:/Users/jlovr/CS532-HW2/programs/tests/probabilistic/test_{}.daphne'.format(i)])
-        truth = load_truth('programs/tests/probabilistic/test_{}.truth'.format(i))
+        graph = daphne(['graph', '-i', 'C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/tests/probabilistic/test_{}.daphne'.format(i)])
+        truth = load_truth('C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/tests/probabilistic/test_{}.truth'.format(i))
         
         stream = get_stream(graph)
         
@@ -138,15 +199,17 @@ if __name__ == '__main__':
 
     n = 1000
 
-    for i in range(1,5):
-        graph = daphne(['graph','-i','C:/Users/jlovr/CS532-HW2/programs/{}.daphne'.format(i)])
-        
+    for i in range(1,6):
+        graph = daphne(['graph','-i','C:/Users/jlovr/CS532-HW3/Inference-algorithms/programs/{}.daphne'.format(i)])
+
         # samples = []
         # for _ in range(n):
         #     samples.append(sample_from_joint(graph))
-        # sampler(i, samples, "_graph.pdf")
+        # plots(i, samples, "_graph.pdf")
 
         print('\n\n\nSample of prior of program {}:'.format(i))
-        print(sample_from_joint(graph))    
+        print(sample_from_joint(graph)) 
 
+
+    
     
